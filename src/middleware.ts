@@ -7,21 +7,18 @@ type ToolResultContent = (
   | { type: 'error', error: any }
 )[];
 
-
 // It's efficient to get the encoding once and reuse it.
-// "cl100k_base" is the encoding used by gpt-4, gpt-3.5-turbo, and text-embedding-ada-002.
 const encoding = get_encoding("cl100k_base");
 
 /**
- * A middleware function that inspects a tool's result, counts the tokens
- * in its content, and logs the count.
+ * Counts the tokens in a tool's result content.
  *
- * @param toolName The name of the tool that was executed.
  * @param content The content array from the tool's result.
+ * @returns The total number of tokens in the content.
  */
-export function countTokensMiddleware(toolName: string, content: ToolResultContent | undefined): void {
+export function countTokens(content: ToolResultContent | undefined): number {
   if (!content) {
-    return;
+    return 0;
   }
 
   let totalTokens = 0;
@@ -39,10 +36,5 @@ export function countTokensMiddleware(toolName: string, content: ToolResultConte
     }
   }
 
-  console.error(`[Token Counter] Tool '${toolName}' response contains ${totalTokens} tokens.`);
-
-  // The encoding object should be freed when it's no longer needed to avoid memory leaks.
-  // For a long-running server, we might manage this differently, but for now,
-  // we assume the server process will handle cleanup on exit.
-  // encoding.free(); // This would be used if we weren't reusing the encoding object.
+  return totalTokens;
 }
