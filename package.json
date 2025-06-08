@@ -17,6 +17,7 @@
     "inspector": "npx @modelcontextprotocol/inspector build/index.js"
   },
   "dependencies": {
+    "@dqbd/tiktoken": "^1.0.21",
     "@modelcontextprotocol/sdk": "0.6.0",
     "tree-sitter-go": "^0.23.4",
     "tree-sitter-java": "^0.23.5",

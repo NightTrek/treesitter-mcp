@@ -18,6 +18,7 @@ import {
 import { TreeSitterManager } from "./manager.js";
 import { toolSchemas } from "./tools/schemas.js";
 import { toolHandlers } from "./tools/handlers.js";
+import { countTokensMiddleware } from "./middleware.js";
 
 const manager = new TreeSitterManager();
 
@@ -53,7 +54,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
   if (!handler) {
     throw new Error(`Unknown tool: ${request.params.name}`);
   }
-  return handler(manager, request);
+  
+  const result = await handler(manager, request);
+  
+  // Log the token count of the response
+  countTokensMiddleware(request.params.name, result.content);
+  
+  return result;
 });
 
 

@@ -13,7 +13,7 @@ const initializeContext = async (manager: TreeSitterManager, request: CallToolRe
 
   return {
     content: [{
-      type: "text",
+      type: "text" as const,
       text: `Successfully initialized Tree-sitter context and loaded grammars for: ${languages.join(', ')}.`
     }]
   };
@@ -29,7 +29,7 @@ const parseFile = async (manager: TreeSitterManager, request: CallToolRequest) =
 
   return {
     content: [{
-      type: "text",
+      type: "text" as const,
       text: `Successfully parsed and indexed file: ${path}`
     }]
   };
@@ -45,7 +45,7 @@ const structuralSearch = async (manager: TreeSitterManager, request: CallToolReq
 
   return {
     content: [{
-      type: "json",
+      type: "json" as const,
       json: results
     }]
   };
@@ -61,7 +61,7 @@ const listElements = async (manager: TreeSitterManager, request: CallToolRequest
 
   return {
     content: [{
-      type: "json",
+      type: "json" as const,
       json: elements
     }]
   };
@@ -77,7 +77,7 @@ const getContextualSnippet = async (manager: TreeSitterManager, request: CallToo
 
   return {
     content: [{
-      type: "text",
+      type: "text" as const,
       text: snippet || "Could not find a contextual snippet for the given position."
     }]
   };
