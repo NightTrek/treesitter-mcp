@@ -35,7 +35,7 @@ export const toolSchemas = [
         },
         path: {
           type: "string",
-          description: "A unique identifier for the file, typically its file path. This is used to retrieve the parsed tree later."
+          description: "The absolute path to the file. This is used to retrieve the parsed tree later."
         },
       },
       required: ["language", "path"]
@@ -43,7 +43,7 @@ export const toolSchemas = [
     // Example of how this tool solves a problem
     // An engineer needs to analyze a specific file, `auth.py`, for security vulnerabilities.
     // Before running a query to find SQL injection patterns, they must first parse the file.
-    // Usage: parse_file(language='python', path='src/auth.py', content='...')
+    // Usage: parse_file(language='python', path='/path/to/src/auth.py')
     // This makes the file's structure available for the `structural_code_search` tool.
   },
   {
@@ -54,7 +54,7 @@ export const toolSchemas = [
       properties: {
         path: {
           type: "string",
-          description: "The identifier of the file to search, which must have been parsed with `parse_file` first."
+          description: "The absolute path of the file to search, which must have been parsed with `parse_file` first."
         },
         query: {
           type: "string",
@@ -66,7 +66,7 @@ export const toolSchemas = [
     // Example of how this tool solves a problem
     // A developer needs to find all function calls to a specific, but commonly named, function `execute()`.
     // A text search for `execute(` would return many false positives from comments and variable names.
-    // Usage: structural_code_search(path='src/api.js', query='(call_expression function: (identifier) @func (#eq? @func \\"execute\\"))')
+    // Usage: structural_code_search(path='/path/to/src/api.js', query='(call_expression function: (identifier) @func (#eq? @func \\"execute\\"))')
     // This query specifically finds nodes that are `call_expression`s where the function's name is exactly `execute`, yielding zero false positives.
   },
   {
@@ -77,7 +77,7 @@ export const toolSchemas = [
       properties: {
         path: {
           type: "string",
-          description: "The identifier of the file to analyze, which must have been parsed with `parse_file` first."
+          description: "The absolute path of the file to analyze, which must have been parsed with `parse_file` first."
         },
         node_type: {
           type: "string",
@@ -89,7 +89,7 @@ export const toolSchemas = [
     // Example of how this tool solves a problem
     // A developer is trying to understand a complex 1000-line file. Instead of reading it top-to-bottom,
     // they first want to see all the functions it contains.
-    // Usage: list_code_elements_by_kind(path='src/utils.js', node_type='function_declaration')
+    // Usage: list_code_elements_by_kind(path='/path/to/src/utils.js', node_type='function_declaration')
     // This returns a clean list of all function names and their locations, providing an immediate structural overview.
   },
   {
@@ -100,7 +100,7 @@ export const toolSchemas = [
       properties: {
         path: {
           type: "string",
-          description: "The identifier of the file to analyze."
+          description: "The absolute path of the file to analyze."
         },
         row: {
           type: "number",
@@ -116,7 +116,7 @@ export const toolSchemas = [
     // Example of how this tool solves a problem
     // A developer finds a function call `calculate_interest()` and wants to see its implementation.
     // They provide the location of the call.
-    // Usage: get_contextual_code_snippets(path='src/finance.js', row: 105, column: 12)
+    // Usage: get_contextual_code_snippets(path='/path/to/src/finance.js', row: 105, column: 12)
     // The tool returns the full source code of the `calculate_interest` function, allowing for immediate review.
   }
 ];
