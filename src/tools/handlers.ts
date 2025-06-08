@@ -50,8 +50,8 @@ const structuralSearch = async (manager: TreeSitterManager, request: CallToolReq
 
   return {
     content: [{
-      type: "json" as const,
-      json: results
+      type: "text" as const,
+      text: JSON.stringify(results, null, 2)
     }]
   };
 };
@@ -67,8 +67,8 @@ const listElements = async (manager: TreeSitterManager, request: CallToolRequest
 
   return {
     content: [{
-      type: "json" as const,
-      json: elements
+      type: "text" as const,
+      text: JSON.stringify(elements, null, 2)
     }]
   };
 };
