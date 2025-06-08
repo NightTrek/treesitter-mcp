@@ -1,3 +1,5 @@
+import { promises as fs } from 'fs';
+import path from 'path';
 import { CallToolRequest } from "@modelcontextprotocol/sdk/types.js";
 import { TreeSitterManager } from "../manager.js";
 
@@ -20,28 +22,31 @@ const initializeContext = async (manager: TreeSitterManager, request: CallToolRe
 };
 
 const parseFile = async (manager: TreeSitterManager, request: CallToolRequest) => {
-  const { language, path, content } = request.params.arguments as { language: string, path: string, content: string };
-  if (!language || !path || content === undefined) {
-    throw new Error("The 'language', 'path', and 'content' parameters are required.");
+  const { language, path: relativePath } = request.params.arguments as { language: string, path: string };
+  if (!language || !relativePath) {
+    throw new Error("The 'language' and 'path' parameters are required.");
   }
 
-  manager.parseFile(language, path, content);
+  const absolutePath = path.resolve(relativePath);
+  const content = await fs.readFile(absolutePath, 'utf-8');
+  manager.parseFile(language, absolutePath, content);
 
   return {
     content: [{
       type: "text" as const,
-      text: `Successfully parsed and indexed file: ${path}`
+      text: `Successfully parsed and indexed file: ${absolutePath}`
     }]
   };
 };
 
 const structuralSearch = async (manager: TreeSitterManager, request: CallToolRequest) => {
-  const { path, query } = request.params.arguments as { path: string, query: string };
-  if (!path || !query) {
+  const { path: relativePath, query } = request.params.arguments as { path: string, query: string };
+  if (!relativePath || !query) {
     throw new Error("The 'path' and 'query' parameters are required.");
   }
 
-  const results = manager.search(path, query);
+  const absolutePath = path.resolve(relativePath);
+  const results = manager.search(absolutePath, query);
 
   return {
     content: [{
@@ -52,12 +57,13 @@ const structuralSearch = async (manager: TreeSitterManager, request: CallToolReq
 };
 
 const listElements = async (manager: TreeSitterManager, request: CallToolRequest) => {
-  const { path, node_type } = request.params.arguments as { path: string, node_type: string };
-  if (!path || !node_type) {
+  const { path: relativePath, node_type } = request.params.arguments as { path: string, node_type: string };
+  if (!relativePath || !node_type) {
     throw new Error("The 'path' and 'node_type' parameters are required.");
   }
 
-  const elements = manager.listElements(path, node_type);
+  const absolutePath = path.resolve(relativePath);
+  const elements = manager.listElements(absolutePath, node_type);
 
   return {
     content: [{
@@ -68,12 +74,13 @@ const listElements = async (manager: TreeSitterManager, request: CallToolRequest
 };
 
 const getContextualSnippet = async (manager: TreeSitterManager, request: CallToolRequest) => {
-  const { path, row, column } = request.params.arguments as { path: string, row: number, column: number };
-  if (!path || row === undefined || column === undefined) {
+  const { path: relativePath, row, column } = request.params.arguments as { path: string, row: number, column: number };
+  if (!relativePath || row === undefined || column === undefined) {
     throw new Error("The 'path', 'row', and 'column' parameters are required.");
   }
 
-  const snippet = manager.getContextualSnippet(path, { row, column });
+  const absolutePath = path.resolve(relativePath);
+  const snippet = manager.getContextualSnippet(absolutePath, { row, column });
 
   return {
     content: [{

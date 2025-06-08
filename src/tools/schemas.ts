@@ -37,12 +37,8 @@ export const toolSchemas = [
           type: "string",
           description: "A unique identifier for the file, typically its file path. This is used to retrieve the parsed tree later."
         },
-        content: {
-          type: "string",
-          description: "The full source code content of the file."
-        }
       },
-      required: ["language", "path", "content"]
+      required: ["language", "path"]
     },
     // Example of how this tool solves a problem
     // An engineer needs to analyze a specific file, `auth.py`, for security vulnerabilities.
