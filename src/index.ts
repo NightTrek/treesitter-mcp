@@ -15,7 +15,7 @@ import {
   ListToolsRequestSchema,
   CallToolRequest,
 } from "@modelcontextprotocol/sdk/types.js";
-import { Parser, Language, Tree, Query } from "web-tree-sitter";
+import { Parser, Language, Tree, Query, Point, Node } from "web-tree-sitter";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -131,6 +131,64 @@ class TreeSitterManager {
       endPosition: match.node.endPosition,
     }));
   }
+
+  /**
+   * Lists all syntax nodes of a specific type in a parsed file.
+   * @param filePath The unique identifier for the file.
+   * @param nodeType The type of node to list (e.g., 'function_declaration').
+   * @returns An array of found nodes with their details.
+   */
+  listElements(filePath: string, nodeType: string) {
+    const tree = this.getTree(filePath);
+    if (!tree) {
+      throw new Error(`File not found or not parsed: ${filePath}. Use parse_file first.`);
+    }
+
+    const nodes = tree.rootNode.descendantsOfType(nodeType);
+
+    return nodes.filter((node): node is Node => node !== null).map(node => {
+      const nameNode = node.childForFieldName("name");
+      return {
+        name: nameNode ? nameNode.text : '(anonymous)',
+        type: node.type,
+        text: node.text,
+        startPosition: node.startPosition,
+        endPosition: node.endPosition,
+      };
+    });
+  }
+
+  /**
+   * Gets a contextual snippet of code, typically the containing function or class.
+   * @param filePath The unique identifier for the file.
+   * @param position The row and column to find the context for.
+   * @returns The text of the containing block, or null if not found.
+   */
+  getContextualSnippet(filePath: string, position: Point): string | null {
+    const tree = this.getTree(filePath);
+    if (!tree) {
+      throw new Error(`File not found or not parsed: ${filePath}. Use parse_file first.`);
+    }
+
+    let node = tree.rootNode.descendantForPosition(position);
+    if (!node) {
+      return null;
+    }
+
+    // Walk up the tree to find a meaningful block-level parent
+    const blockTypes = new Set([
+      'function_declaration',
+      'method_definition',
+      'class_declaration',
+      'arrow_function'
+    ]);
+
+    while (node.parent && !blockTypes.has(node.type)) {
+      node = node.parent;
+    }
+
+    return node.text;
+  }
 }
 
 const manager = new TreeSitterManager();
@@ -229,6 +287,56 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         // A text search for `execute(` would return many false positives from comments and variable names.
         // Usage: structural_code_search(path='src/api.js', query='(call_expression function: (identifier) @func (#eq? @func \\"execute\\"))')
         // This query specifically finds nodes that are `call_expression`s where the function's name is exactly `execute`, yielding zero false positives.
+      },
+      {
+        name: "list_code_elements_by_kind",
+        description: "Enumerates all code constructs of a given syntactic type in a file (e.g., all functions, classes, or imports). This provides a high-level 'table of contents' for a file, allowing for rapid understanding of its structure and key components.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              description: "The identifier of the file to analyze, which must have been parsed with `parse_file` first."
+            },
+            node_type: {
+              type: "string",
+              description: "The syntactic type of the elements to list (e.g., 'function_declaration', 'class_declaration')."
+            }
+          },
+          required: ["path", "node_type"]
+        },
+        // Example of how this tool solves a problem
+        // A developer is trying to understand a complex 1000-line file. Instead of reading it top-to-bottom,
+        // they first want to see all the functions it contains.
+        // Usage: list_code_elements_by_kind(path='src/utils.js', node_type='function_declaration')
+        // This returns a clean list of all function names and their locations, providing an immediate structural overview.
+      },
+      {
+        name: "get_contextual_code_snippets",
+        description: "Extracts a contextual block of code (like a full function or class) based on a specific point in a file. This is ideal for understanding a feature without the noise of the entire file.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            path: {
+              type: "string",
+              description: "The identifier of the file to analyze."
+            },
+            row: {
+              type: "number",
+              description: "The zero-based row number of the point of interest."
+            },
+            column: {
+              type: "number",
+              description: "The zero-based column number of the point of interest."
+            }
+          },
+          required: ["path", "row", "column"]
+        },
+        // Example of how this tool solves a problem
+        // A developer finds a function call `calculate_interest()` and wants to see its implementation.
+        // They provide the location of the call.
+        // Usage: get_contextual_code_snippets(path='src/finance.js', row: 105, column: 12)
+        // The tool returns the full source code of the `calculate_interest` function, allowing for immediate review.
       }
     ]
   };
@@ -286,6 +394,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
         content: [{
           type: "json",
           json: results
+        }]
+      };
+    }
+
+    case "list_code_elements_by_kind": {
+      const { path: listPath, node_type } = request.params.arguments as { path: string, node_type: string };
+      if (!listPath || !node_type) {
+        throw new Error("The 'path' and 'node_type' parameters are required.");
+      }
+
+      const elements = manager.listElements(listPath, node_type);
+
+      return {
+        content: [{
+          type: "json",
+          json: elements
+        }]
+      };
+    }
+
+    case "get_contextual_code_snippets": {
+      const { path: snippetPath, row, column } = request.params.arguments as { path: string, row: number, column: number };
+      if (!snippetPath || row === undefined || column === undefined) {
+        throw new Error("The 'path', 'row', and 'column' parameters are required.");
+      }
+
+      const snippet = manager.getContextualSnippet(snippetPath, { row, column });
+
+      return {
+        content: [{
+          type: "text",
+          text: snippet || "Could not find a contextual snippet for the given position."
         }]
       };
     }
