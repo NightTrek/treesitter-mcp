@@ -2,7 +2,8 @@
   "name": "TreeSitter Code Search",
   "version": "0.1.0",
   "description": "Structural code-intel via Tree-sitter",
-  "private": true,
+  "private": false,
+  "license": "MIT",
   "type": "module",
   "bin": {
     "TreeSitter Code Search": "./build/index.js"
