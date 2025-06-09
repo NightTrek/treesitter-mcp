@@ -35,10 +35,10 @@ This server provides a powerful suite of tools for code analysis.
 
 | Tool | Description | Primary Use Case |
 | :--- | :--- | :--- |
-| `initialize_treesitter_context` | Loads language grammars into memory. | **Must be called first.** Prepares the server for a session. |
-| `list_code_elements_by_kind` | Lists all nodes of a specific type (e.g., functions). | Get a high-level "table of contents" for a file. |
-| `get_contextual_code_snippets`| Extracts the full containing block (function/class). | Zoom in on a specific feature's implementation. |
-| `structural_code_search` | Executes a precise S-expression query. | Find specific, complex code patterns with no false positives. |
+| `initialize_treesitter_context` | Initializes the parser and loads language grammars. | **Must be called first.** Prepares the server for a session. |
+| `list_code_elements_by_kind` | Enumerates top-level code constructs (functions, classes, etc.). | Get a high-level "table of contents" for a file. |
+| `get_contextual_code_snippets`| Retrieves the full containing function or class body for a given code location. | Zoom in on a specific feature's implementation. |
+| `structural_code_search` | Performs a precise, syntax-aware search for code patterns using a Tree-sitter query. | Find specific, complex code patterns with no false positives. |
 
 For detailed technical guidelines, see `.clinerules/treesitter-server-guidelines.md`.
 
