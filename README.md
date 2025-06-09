@@ -42,6 +42,10 @@ This server provides a powerful suite of tools for code analysis.
 
 For detailed technical guidelines, see `.clinerules/treesitter-server-guidelines.md`.
 
+## ✨ What's New (as of `d957324`)
+
+- **Integration Testing Guidelines:** Added comprehensive guidelines for writing integration tests for new tools. This ensures that all new features are tested robustly and consistently. For more details, see `.clinerules/integration-testing-guidelines.md`.
+
 ## 🚀 Getting Started
 
 ### 1. Installation
