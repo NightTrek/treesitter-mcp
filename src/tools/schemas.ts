@@ -115,4 +115,44 @@ This provides a clean list of all function names and their locations, offering a
       required: ["path", "node_type"]
     },
   },
+  {
+    name: "get_contextual_code_snippets",
+    description: `
+Gets a contextual snippet of code, typically the containing function or class. The file will be automatically parsed if it hasn't been already.
+
+Why use this tool?
+After finding a specific element (like a function call or declaration), you often need to see the full context in which it exists. This tool allows you to retrieve the entire body of the surrounding function, class, or other block-level element, providing a complete picture for analysis.
+
+When to use it:
+- To examine the implementation of a function you've located.
+- To understand how a variable is used within its scope.
+- To review the full definition of a class.
+
+Example Scenario:
+You've used 'list_code_elements_by_kind' to find that a file contains a function named 'calculatePrice'. Now you want to see the actual code of that function.
+
+Correct Usage:
+get_contextual_code_snippets({ path: '/path/to/src/logic.js', row: 42, column: 10 })
+
+This will return the full text of the function or class that contains the code at the specified line and column.
+`,
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description: "The absolute path of the file to analyze. This is a required parameter."
+        },
+        row: {
+          type: "number",
+          description: "The zero-based row number (line number) to start from."
+        },
+        column: {
+          type: "number",
+          description: "The zero-based column number to start from."
+        }
+      },
+      required: ["path", "row", "column"]
+    }
+  }
 ];

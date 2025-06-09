@@ -29,7 +29,8 @@ const structuralSearch = async (manager: TreeSitterManager, request: CallToolReq
   }
 
   const absolutePath = path.resolve(relativePath);
-  const results = manager.search(absolutePath, query);
+  const tree = await manager.getOrParseTree(absolutePath);
+  const results = manager.search(tree, query);
 
   return {
     content: [{
@@ -46,7 +47,8 @@ const listElements = async (manager: TreeSitterManager, request: CallToolRequest
   }
 
   const absolutePath = path.resolve(relativePath);
-  const elements = manager.listElements(absolutePath, node_type);
+  const tree = await manager.getOrParseTree(absolutePath);
+  const elements = manager.listElements(tree, node_type);
 
   return {
     content: [{
@@ -63,7 +65,8 @@ const getContextualSnippet = async (manager: TreeSitterManager, request: CallToo
   }
 
   const absolutePath = path.resolve(relativePath);
-  const snippet = manager.getContextualSnippet(absolutePath, { row, column });
+  const tree = await manager.getOrParseTree(absolutePath);
+  const snippet = manager.getContextualSnippet(tree, { row, column });
 
   return {
     content: [{

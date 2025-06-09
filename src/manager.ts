@@ -1,5 +1,6 @@
 import { Parser, Language, Tree, Query, Point, Node as TSNode } from "web-tree-sitter";
 import path from "path";
+import { promises as fs } from "fs";
 import { fileURLToPath } from "url";
 import { get_encoding } from "@dqbd/tiktoken";
 
@@ -105,16 +106,66 @@ export class TreeSitterManager {
   }
 
   /**
+   * Retrieves a syntax tree for a file, parsing it if it hasn't been already.
+   * This is the central method for accessing file trees, ensuring that files
+   * are only parsed once and that clear errors are provided for missing files.
+   * @param filePath The absolute path to the file.
+   * @param languageName The language of the file. If not provided, it will be inferred.
+   * @returns The parsed Tree.
+   */
+  async getOrParseTree(filePath: string, languageName?: string): Promise<Tree> {
+    if (this.trees.has(filePath)) {
+      return this.trees.get(filePath)!;
+    }
+
+    try {
+      await fs.access(filePath);
+    } catch (error) {
+      throw new Error(`File not found at path: ${filePath}. Please ensure you are using an absolute path to the file.`);
+    }
+
+    const lang = languageName || this.inferLanguage(filePath);
+    if (!this.languages.has(lang)) {
+      await this.loadLanguage(lang);
+    }
+
+    const content = await fs.readFile(filePath, 'utf-8');
+    this.parseFile(lang, filePath, content);
+    return this.trees.get(filePath)!;
+  }
+
+  /**
+   * Infers the programming language from a file extension.
+   * @param filePath The path to the file.
+   * @returns The inferred language name.
+   */
+  private inferLanguage(filePath: string): string {
+    const extension = path.extname(filePath).slice(1);
+    switch (extension) {
+      case 'ts':
+      case 'tsx':
+        return 'typescript';
+      case 'js':
+      case 'jsx':
+        return 'javascript';
+      case 'py':
+        return 'python';
+      case 'go':
+        return 'go';
+      case 'java':
+        return 'java';
+      default:
+        throw new Error(`Unsupported file extension: ${extension}`);
+    }
+  }
+
+  /**
    * Executes a Tree-sitter query against a parsed file.
-   * @param filePath The unique identifier for the file to search.
+   * @param tree The syntax tree to search.
    * @param queryString The S-expression query to execute.
    * @returns An array of captures.
    */
-  search(filePath: string, queryString: string) {
-    const tree = this.getTree(filePath);
-    if (!tree) {
-      throw new Error(`File not found or not parsed: ${filePath}.`);
-    }
+  search(tree: Tree, queryString: string) {
 
     const language = tree.language;
     const query = language.query(queryString);
@@ -130,15 +181,11 @@ export class TreeSitterManager {
 
   /**
    * Lists all syntax nodes of a specific type in a parsed file.
-   * @param filePath The unique identifier for the file.
+   * @param tree The syntax tree to analyze.
    * @param nodeType The type of node to list (e.g., 'function_declaration').
    * @returns An array of found nodes with their details.
    */
-  listElements(filePath: string, nodeType: string) {
-    const tree = this.getTree(filePath);
-    if (!tree) {
-      throw new Error(`File not found or not parsed: ${filePath}.`);
-    }
+  listElements(tree: Tree, nodeType: string) {
 
     const nodes = tree.rootNode.descendantsOfType(nodeType);
 
@@ -156,15 +203,11 @@ export class TreeSitterManager {
 
   /**
    * Gets a contextual snippet of code, typically the containing function or class.
-   * @param filePath The unique identifier for the file.
+   * @param tree The syntax tree to analyze.
    * @param position The row and column to find the context for.
    * @returns The text of the containing block, or null if not found.
    */
-  getContextualSnippet(filePath: string, position: Point): string | null {
-    const tree = this.getTree(filePath);
-    if (!tree) {
-      throw new Error(`File not found or not parsed: ${filePath}.`);
-    }
+  getContextualSnippet(tree: Tree, position: Point): string | null {
 
     let node = tree.rootNode.descendantForPosition(position);
     if (!node) {
