@@ -24,7 +24,7 @@ To add a new tool to the server, follow these steps:
 ## Server Usage Pattern
 The intended workflow for a client using this server is as follows:
 1.  Call `initialize_treesitter_context` once at the beginning of a session to load the required language grammars.
-2.  For each file to be analyzed, call `parse_file` to generate and cache its syntax tree.
+2.  Use any of the analysis tools (`list_code_elements_by_kind`, `structural_code_search`, etc.). The server will automatically parse the requested file the first time it's needed.
 3.  Use `list_code_elements_by_kind` to get a high-level overview of a file's structure (e.g., list all functions).
 4.  Use `structural_code_search` to run specific, detailed queries to find precise code patterns.
 5.  Once an interesting code element is located, use `get_contextual_code_snippets` to retrieve its full surrounding context (like the entire function body) for detailed analysis.

@@ -18,7 +18,7 @@ import {
 import { TreeSitterManager } from "./manager.js";
 import { toolSchemas } from "./tools/schemas.js";
 import { toolHandlers } from "./tools/handlers.js";
-import { countTokens } from "./middleware.js";
+import { countTokens, ensureFileIsParsed } from "./middleware.js";
 import { logToolUsage, shutdownLogger } from "./logger.js";
 
 const manager = new TreeSitterManager();
@@ -58,6 +58,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
 
   const startTime = Date.now();
   try {
+    // Before executing the handler, ensure the requested file is parsed.
+    await ensureFileIsParsed(manager, request);
+
     const result = await handler(manager, request);
     const duration = Date.now() - startTime;
     const tokenCount = countTokens(result.content);
@@ -65,6 +68,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
     logToolUsage({
       toolName: request.params.name,
       inputQuery: request.params.arguments,
+      toolOutput: result.content,
       outputTokenCount: tokenCount,
       status: 'success',
       duration: duration,
@@ -76,6 +80,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest)
     logToolUsage({
       toolName: request.params.name,
       inputQuery: request.params.arguments,
+      toolOutput: null,
       outputTokenCount: 0,
       status: 'error',
       error: error.message || String(error),

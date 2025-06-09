@@ -21,23 +21,6 @@ const initializeContext = async (manager: TreeSitterManager, request: CallToolRe
   };
 };
 
-const parseFile = async (manager: TreeSitterManager, request: CallToolRequest) => {
-  const { language, path: relativePath } = request.params.arguments as { language: string, path: string };
-  if (!language || !relativePath) {
-    throw new Error("The 'language' and 'path' parameters are required.");
-  }
-
-  const absolutePath = path.resolve(relativePath);
-  const content = await fs.readFile(absolutePath, 'utf-8');
-  manager.parseFile(language, absolutePath, content);
-
-  return {
-    content: [{
-      type: "text" as const,
-      text: `Successfully parsed and indexed file: ${absolutePath}`
-    }]
-  };
-};
 
 const structuralSearch = async (manager: TreeSitterManager, request: CallToolRequest) => {
   const { path: relativePath, query } = request.params.arguments as { path: string, query: string };
@@ -90,10 +73,32 @@ const getContextualSnippet = async (manager: TreeSitterManager, request: CallToo
   };
 };
 
+const validateSyntaxTokenCounts = async (manager: TreeSitterManager, request: CallToolRequest) => {
+  const { language, path: relativePath } = request.params.arguments as { language: string, path: string };
+  if (!language || !relativePath) {
+    throw new Error("The 'language' and 'path' parameters are required.");
+  }
+
+  const absolutePath = path.resolve(relativePath);
+  const content = await fs.readFile(absolutePath, 'utf-8');
+
+  // Ensure the file is parsed before analytics
+  manager.parseFile(language, absolutePath, content);
+  
+  const analytics = manager.getSyntaxTreeAnalytics(absolutePath, content);
+
+  return {
+    content: [{
+      type: "text" as const,
+      text: JSON.stringify(analytics, null, 2)
+    }]
+  };
+};
+
 export const toolHandlers = {
   "initialize_treesitter_context": initializeContext,
-  "parse_file": parseFile,
   "structural_code_search": structuralSearch,
   "list_code_elements_by_kind": listElements,
   "get_contextual_code_snippets": getContextualSnippet,
+  "validate_syntax_token_counts": validateSyntaxTokenCounts,
 };

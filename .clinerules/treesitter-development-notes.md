@@ -1,0 +1,1 @@
+A CST preserves all syntactic elements including whitespace, comments, punctuation, etc. An AST removes syntactic noise and focuses on the semantic structure. We would prefer to remove whitespace comments and punctuation as it adds tokens and noise to the data produced.

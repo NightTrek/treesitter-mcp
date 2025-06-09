@@ -1,6 +1,10 @@
-import { Parser, Language, Tree, Query, Point, Node } from "web-tree-sitter";
+import { Parser, Language, Tree, Query, Point, Node as TSNode } from "web-tree-sitter";
 import path from "path";
 import { fileURLToPath } from "url";
+import { get_encoding } from "@dqbd/tiktoken";
+
+// It's efficient to get the encoding once and reuse it.
+const encoding = get_encoding("cl100k_base");
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -92,6 +96,15 @@ export class TreeSitterManager {
   }
 
   /**
+   * Checks if a file has already been parsed and its tree is cached.
+   * @param filePath The unique identifier for the file.
+   * @returns True if the file is parsed, false otherwise.
+   */
+  isParsed(filePath: string): boolean {
+    return this.trees.has(filePath);
+  }
+
+  /**
    * Executes a Tree-sitter query against a parsed file.
    * @param filePath The unique identifier for the file to search.
    * @param queryString The S-expression query to execute.
@@ -100,7 +113,7 @@ export class TreeSitterManager {
   search(filePath: string, queryString: string) {
     const tree = this.getTree(filePath);
     if (!tree) {
-      throw new Error(`File not found or not parsed: ${filePath}. Use parse_file first.`);
+      throw new Error(`File not found or not parsed: ${filePath}.`);
     }
 
     const language = tree.language;
@@ -124,12 +137,12 @@ export class TreeSitterManager {
   listElements(filePath: string, nodeType: string) {
     const tree = this.getTree(filePath);
     if (!tree) {
-      throw new Error(`File not found or not parsed: ${filePath}. Use parse_file first.`);
+      throw new Error(`File not found or not parsed: ${filePath}.`);
     }
 
     const nodes = tree.rootNode.descendantsOfType(nodeType);
 
-    return nodes.filter((node): node is Node => node !== null).map(node => {
+    return nodes.filter((node): node is TSNode => node !== null).map((node: TSNode) => {
       const nameNode = node.childForFieldName("name");
       return {
         name: nameNode ? nameNode.text : '(anonymous)',
@@ -150,7 +163,7 @@ export class TreeSitterManager {
   getContextualSnippet(filePath: string, position: Point): string | null {
     const tree = this.getTree(filePath);
     if (!tree) {
-      throw new Error(`File not found or not parsed: ${filePath}. Use parse_file first.`);
+      throw new Error(`File not found or not parsed: ${filePath}.`);
     }
 
     let node = tree.rootNode.descendantForPosition(position);
@@ -171,5 +184,84 @@ export class TreeSitterManager {
     }
 
     return node.text;
+  }
+
+  /**
+   * Generates a serializable representation of a CST node.
+   * @param node The CST node to serialize.
+   * @returns A serializable object representing the node.
+   */
+  private serializeCstNode(node: TSNode): any {
+    return {
+      type: node.type,
+      text: node.text,
+      startPosition: node.startPosition,
+      endPosition: node.endPosition,
+      children: node.children
+        .filter((c): c is TSNode => c !== null)
+        .map(c => this.serializeCstNode(c)),
+    };
+  }
+
+  /**
+   * Recursively builds a simplified Abstract Syntax Tree (AST) from a CST node.
+   * This version focuses on capturing the structural essence of the code.
+   * @param node The CST node to process.
+   * @returns A simplified AST node or null if the node is to be skipped.
+   */
+  private buildAstNode(node: TSNode): any | null {
+    // Skip comments and non-essential punctuation/keywords that are unnamed.
+    if (node.type === 'comment' || !node.isNamed) {
+      return null;
+    }
+
+    const children = node.children
+      .filter((c): c is TSNode => c !== null)
+      .map(c => this.buildAstNode(c))
+      .filter(c => c !== null);
+
+    const nameNode = node.childForFieldName("name");
+
+    return {
+      type: node.type,
+      name: nameNode ? nameNode.text : undefined,
+      startPosition: node.startPosition,
+      endPosition: node.endPosition,
+      ...(children.length > 0 && { children }),
+    };
+  }
+
+  /**
+   * Analyzes a file's syntax tree to provide token counts and tree structures.
+   * @param filePath The unique identifier for the file.
+   * @param fileContent The original content of the file.
+   * @returns An object with token counts, CST, and AST.
+   */
+  getSyntaxTreeAnalytics(filePath: string, fileContent: string) {
+    const tree = this.getTree(filePath);
+    if (!tree) {
+      throw new Error(`File not found or not parsed: ${filePath}.`);
+    }
+
+    // 1. Count tokens in the original file
+    const originalTokenCount = encoding.encode(fileContent).length;
+
+    // 2. Get the full Concrete Syntax Tree (CST)
+    const cst = this.serializeCstNode(tree.rootNode);
+    const cstString = JSON.stringify(cst);
+    const cstTokenCount = encoding.encode(cstString).length;
+
+    // 3. Build the Abstract Syntax Tree (AST)
+    const ast = this.buildAstNode(tree.rootNode);
+    const astString = JSON.stringify(ast);
+    const astTokenCount = encoding.encode(astString).length;
+
+    return {
+      originalTokenCount,
+      cstTokenCount,
+      astTokenCount,
+      cst,
+      ast,
+    };
   }
 }

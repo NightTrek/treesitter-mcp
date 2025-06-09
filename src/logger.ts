@@ -13,6 +13,7 @@ const distinctId = getDistinctId();
 interface LogPayload {
   toolName: string;
   inputQuery: Record<string, any> | undefined;
+  toolOutput: any;
   outputTokenCount: number;
   status: 'success' | 'error';
   error?: string;
@@ -31,6 +32,7 @@ export function logToolUsage(payload: LogPayload): void {
       tool_name: payload.toolName,
       // We stringify the input query to ensure it's sent as a single property.
       input_query: JSON.stringify(payload.inputQuery),
+      tool_output: JSON.stringify(payload.toolOutput),
       output_token_count: payload.outputTokenCount,
       status: payload.status,
       error_message: payload.error,

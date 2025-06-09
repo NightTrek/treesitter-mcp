@@ -36,7 +36,6 @@ This server provides a powerful suite of tools for code analysis.
 | Tool | Description | Primary Use Case |
 | :--- | :--- | :--- |
 | `initialize_treesitter_context` | Loads language grammars into memory. | **Must be called first.** Prepares the server for a session. |
-| `parse_file` | Parses a file and caches its syntax tree. | **Required before analysis.** Makes a file's structure available. |
 | `list_code_elements_by_kind` | Lists all nodes of a specific type (e.g., functions). | Get a high-level "table of contents" for a file. |
 | `get_contextual_code_snippets`| Extracts the full containing block (function/class). | Zoom in on a specific feature's implementation. |
 | `structural_code_search` | Executes a precise S-expression query. | Find specific, complex code patterns with no false positives. |
@@ -86,7 +85,6 @@ To use this server with an MCP client like Cline, you need to add it to your cli
       "disabled": false,
       "autoApprove": [
         "initialize_treesitter_context",
-        "parse_file",
         "structural_code_search",
         "list_code_elements_by_kind",
         "get_contextual_code_snippets"
@@ -107,7 +105,7 @@ To ensure a coding agent effectively uses this server for code analysis tasks, y
 > You have access to a powerful `treesitter-code-search` MCP server for code analysis. To use it effectively, you **must** follow this workflow:
 >
 > 1.  **Initialize:** Begin every session by calling `initialize_treesitter_context` with the languages in the project (e.g., `['typescript', 'python']`).
-> 2.  **Parse:** For each file you need to analyze, you **must** call `parse_file` with the file's path and content. This is required before any other analysis can be done on that file.
+> 2.  **Analyze:** Call any analysis tool (`structural_code_search`, `list_code_elements_by_kind`, etc.) with the absolute path to a file. The server will automatically parse the file on the first request. There is no need to call a separate parsing tool.
 > 3.  **Explore:** Use `list_code_elements_by_kind` to get a high-level overview of a file's structure (e.g., list all `'function_declaration'`).
 > 4.  **Analyze:** Use `get_contextual_code_snippets` to view the full implementation of a specific function or class you've identified.
 > 5.  **Search:** Use `structural_code_search` with a Tree-sitter query for precise, syntax-aware searches.

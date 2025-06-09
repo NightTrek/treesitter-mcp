@@ -363,3 +363,20 @@ This phase tackles the most complex features, bridging the gap between single-fi
     *   The `get_semantic_symbols` tool returns a list of symbols for a file that is more accurate and detailed than the existing `list_code_elements_by_kind`.
 
 This expanded plan provides a much more detailed guide for implementation.
+
+
+
+__________________________________________________________________________________________________________________
+Okay, start by analyzing the current `TreeSitter` MCP server. It includes an initialization command, a parse file command, and a couple of other commands. I think the goal is to have the initialization command begin `TreeSitter` on the entire root directory.
+
+You should initialize `TreeSitter` with TypeScript and then an absolute path. In our schema, we should be explicit that it is an absolute path from root. This initialization step should parse all the files in a folder and create a common cross-file syntax tree, similar to the `enhancementplan.md` file.
+
+There should then be a tool called `FindCodeBranch`, which is a tool that takes a symbol from a specific file or something to reference the branch of the tree and then finds the related branches up to a certain depth in both parents and children. It should use breadth-first search to decide how many layers deep it goes. The goal with that tool is it should provide code that is directly related to the syntax tree that we are analyzing.
+
+We should also have a tool that will list all of the function and variable definition names in a file, their full function signatures, and variable signatures, etc., for a single file. We should also be able to do that for a folder as well, and it should, when it's doing this listing process, create a text-based tree that demonstrates where in the files each of these signatures are located, what their parents are, their parents' parents, and if there are any children.
+
+I'm realizing that if you use this code search functionality, it should reparse the whole tree based off of the initialization. Absolute Path as the file path to the folder that contains the tree that we're parsing. 
+
+
+Here is some context about how we can use syntax trees for better code analysis 
+
