@@ -37,7 +37,7 @@ export class TreeSitterManager {
    */
   async loadLanguage(languageName: string): Promise<void> {
     if (this.languages.has(languageName)) {
-      console.log(`Language '${languageName}' is already loaded.`);
+      console.error(`Language '${languageName}' is already loaded.`);
       return;
     }
 
@@ -48,7 +48,7 @@ export class TreeSitterManager {
     try {
       const language = await Language.load(wasmPath);
       this.languages.set(languageName, language);
-      console.log(`Successfully loaded language: ${languageName}`);
+      console.error(`Successfully loaded language: ${languageName}`);
     } catch (error) {
       console.error(`Failed to load language '${languageName}' from ${wasmPath}`, error);
       throw new Error(`Could not load grammar for '${languageName}'. Ensure the WASM file exists at the expected path.`);
@@ -107,21 +107,16 @@ export class TreeSitterManager {
 
   /**
    * Retrieves a syntax tree for a file, parsing it if it hasn't been already.
-   * This is the central method for accessing file trees, ensuring that files
-   * are only parsed once and that clear errors are provided for missing files.
-   * @param filePath The absolute path to the file.
+   * This is the central method for accessing file trees. It can either use
+   * provided content or read from the filesystem.
+   * @param filePath The absolute path to the file, used as a unique identifier.
    * @param languageName The language of the file. If not provided, it will be inferred.
+   * @param content Optional file content. If not provided, it will be read from disk.
    * @returns The parsed Tree.
    */
-  async getOrParseTree(filePath: string, languageName?: string): Promise<Tree> {
+  async getOrParseTree(filePath: string, languageName?: string, content?: string): Promise<Tree> {
     if (this.trees.has(filePath)) {
       return this.trees.get(filePath)!;
-    }
-
-    try {
-      await fs.access(filePath);
-    } catch (error) {
-      throw new Error(`File not found at path: ${filePath}. Please ensure you are using an absolute path to the file.`);
     }
 
     const lang = languageName || this.inferLanguage(filePath);
@@ -129,8 +124,17 @@ export class TreeSitterManager {
       await this.loadLanguage(lang);
     }
 
-    const content = await fs.readFile(filePath, 'utf-8');
-    this.parseFile(lang, filePath, content);
+    let fileContent = content;
+    if (fileContent === undefined) {
+      try {
+        await fs.access(filePath);
+        fileContent = await fs.readFile(filePath, 'utf-8');
+      } catch (error) {
+        throw new Error(`File not found at path: ${filePath}. Please ensure you are using an absolute path to the file.`);
+      }
+    }
+    
+    this.parseFile(lang, filePath, fileContent);
     return this.trees.get(filePath)!;
   }
 
@@ -168,7 +172,7 @@ export class TreeSitterManager {
   search(tree: Tree, queryString: string) {
 
     const language = tree.language;
-    const query = language.query(queryString);
+    const query = new Query(language, queryString);
     const matches = query.captures(tree.rootNode);
 
     return matches.map(match => ({

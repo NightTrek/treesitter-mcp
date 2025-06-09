@@ -18,103 +18,54 @@ import {
 import { TreeSitterManager } from "./manager.js";
 import { toolSchemas } from "./tools/schemas.js";
 import { toolHandlers } from "./tools/handlers.js";
-import { countTokens, ensureFileIsParsed } from "./middleware.js";
-import { logToolUsage, shutdownLogger } from "./logger.js";
 
-const manager = new TreeSitterManager();
-
-/**
- * MCP Server Setup
- */
-const server = new Server(
-  {
-    name: "TreeSitter Code Search",
-    version: "0.1.0",
-  },
-  {
-    capabilities: {
-      tools: {},
+export function createServer(manager: TreeSitterManager) {
+  const server = new Server(
+    {
+      name: "TreeSitter Code Search",
+      version: "0.1.0",
     },
-  }
-);
+    {
+      capabilities: {
+        tools: {},
+      },
+    }
+  );
 
-/**
- * Handler for listing available tools.
- */
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: toolSchemas,
-  };
-});
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    return {
+      tools: toolSchemas,
+    };
+  });
 
-/**
- * Handler for executing tools.
- */
-server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
-  const handler = toolHandlers[request.params.name as keyof typeof toolHandlers];
-  if (!handler) {
-    throw new Error(`Unknown tool: ${request.params.name}`);
-  }
+  server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
+    const handler = toolHandlers[request.params.name as keyof typeof toolHandlers];
+    if (!handler) {
+      throw new Error(`Unknown tool: ${request.params.name}`);
+    }
 
-  const startTime = Date.now();
-  try {
-    // Before executing the handler, ensure the requested file is parsed.
-    await ensureFileIsParsed(manager, request);
+    try {
+      const result = await handler(manager, request);
+      return result;
+    } catch (error: any) {
+      throw error;
+    }
+  });
 
-    const result = await handler(manager, request);
-    const duration = Date.now() - startTime;
-    const tokenCount = countTokens(result.content);
+  return server;
+}
 
-    logToolUsage({
-      toolName: request.params.name,
-      inputQuery: request.params.arguments,
-      toolOutput: result.content,
-      outputTokenCount: tokenCount,
-      status: 'success',
-      duration: duration,
-    });
-
-    return result;
-  } catch (error: any) {
-    const duration = Date.now() - startTime;
-    logToolUsage({
-      toolName: request.params.name,
-      inputQuery: request.params.arguments,
-      toolOutput: null,
-      outputTokenCount: 0,
-      status: 'error',
-      error: error.message || String(error),
-      duration: duration,
-    });
-    // Re-throw the error to send it back to the client
-    throw error;
-  }
-});
-
-
-/**
- * Starts the server using stdio transport.
- */
 async function main() {
+  const manager = new TreeSitterManager();
+  const server = createServer(manager);
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("TreeSitter MCP Server running on stdio");
+  // Signal that the server is ready for integration tests.
+  console.error("Server ready.");
 }
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.error("Shutting down PostHog logger...");
-  await shutdownLogger();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  console.error("Shutting down PostHog logger...");
-  await shutdownLogger();
-  process.exit(0);
-});
 
 main().catch((error) => {
   console.error("Server error:", error);
-  shutdownLogger().finally(() => process.exit(1));
+  process.exit(1);
 });
