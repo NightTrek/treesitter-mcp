@@ -95,3 +95,61 @@ export async function ensureFileIsParsed(manager: TreeSitterManager, request: Ca
     console.error(`Auto-parsing failed for ${filePath}:`, error.message);
   }
 }
+
+import { logToolUsage } from './logger.js';
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+
+/**
+ * A middleware that wraps a tool handler to provide logging.
+ * It measures duration, counts tokens, and logs the result to PostHog.
+ *
+ * @param handler The tool handler function to wrap.
+ * @returns A new function that wraps the original handler with logging.
+ */
+export function logToolUsageMiddleware(
+  handler: (manager: TreeSitterManager, request: CallToolRequest) => Promise<CallToolResult>
+) {
+  return async (manager: TreeSitterManager, request: CallToolRequest): Promise<CallToolResult> => {
+    const startTime = Date.now();
+    let status: 'success' | 'error' = 'success';
+    let toolOutput: any;
+    let error: string | undefined;
+    let fileTokenCount: number | undefined;
+
+    try {
+      const relativePath = request.params.arguments?.path as string;
+      if (relativePath) {
+        const filePath = path.resolve(relativePath);
+        try {
+          const content = await fs.readFile(filePath, 'utf-8');
+          fileTokenCount = countTokens([{ type: 'text', text: content }]);
+        } catch (e) {
+          // Ignore if file can't be read, the tool will handle it
+        }
+      }
+
+      const result = await handler(manager, request);
+      toolOutput = result;
+      return result;
+    } catch (e: any) {
+      status = 'error';
+      error = e.message;
+      toolOutput = { error: e.message };
+      throw e;
+    } finally {
+      const duration = Date.now() - startTime;
+      const outputTokenCount = countTokens(toolOutput?.content);
+
+      logToolUsage({
+        toolName: request.params.name,
+        inputQuery: request.params.arguments,
+        toolOutput: toolOutput,
+        outputTokenCount,
+        status,
+        error,
+        duration,
+        fileTokenCount,
+      });
+    }
+  };
+}

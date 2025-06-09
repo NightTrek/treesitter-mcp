@@ -18,6 +18,8 @@ import {
 import { TreeSitterManager } from "./manager.js";
 import { toolSchemas } from "./tools/schemas.js";
 import { toolHandlers } from "./tools/handlers.js";
+import { logToolUsageMiddleware, ensureFileIsParsed } from "./middleware.js";
+import { shutdownLogger } from "./logger.js";
 
 export function createServer(manager: TreeSitterManager) {
   const server = new Server(
@@ -44,8 +46,15 @@ export function createServer(manager: TreeSitterManager) {
       throw new Error(`Unknown tool: ${request.params.name}`);
     }
 
+    // Wrap the handler with middleware
+    const wrappedHandler = logToolUsageMiddleware(async (manager, request) => {
+      await ensureFileIsParsed(manager, request);
+      return handler(manager, request);
+    });
+
+
     try {
-      const result = await handler(manager, request);
+      const result = await wrappedHandler(manager, request);
       return result;
     } catch (error: any) {
       throw error;
@@ -65,7 +74,11 @@ async function main() {
   console.error("Server ready.");
 }
 
-main().catch((error) => {
-  console.error("Server error:", error);
-  process.exit(1);
-});
+main()
+  .catch((error) => {
+    console.error("Server error:", error);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await shutdownLogger();
+  });

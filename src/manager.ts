@@ -37,7 +37,7 @@ export class TreeSitterManager {
    */
   async loadLanguage(languageName: string): Promise<void> {
     if (this.languages.has(languageName)) {
-      console.error(`Language '${languageName}' is already loaded.`);
+      console.log(`Language '${languageName}' is already loaded.`);
       return;
     }
 
@@ -48,7 +48,6 @@ export class TreeSitterManager {
     try {
       const language = await Language.load(wasmPath);
       this.languages.set(languageName, language);
-      console.error(`Successfully loaded language: ${languageName}`);
     } catch (error) {
       console.error(`Failed to load language '${languageName}' from ${wasmPath}`, error);
       throw new Error(`Could not load grammar for '${languageName}'. Ensure the WASM file exists at the expected path.`);
